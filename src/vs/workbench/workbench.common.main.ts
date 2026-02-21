@@ -55,6 +55,7 @@ import './browser/parts/statusbar/statusbarPart.js';
 import '../platform/actions/common/actions.contribution.js';
 import '../platform/undoRedo/common/undoRedoService.js';
 import '../platform/mcp/common/mcpResourceScannerService.js';
+import '../platform/forge/common/forgeConfiguration.js';
 import './services/workspaces/common/editSessionIdentityService.js';
 import './services/workspaces/common/canonicalUriService.js';
 import './services/extensions/browser/extensionUrlHandler.js';

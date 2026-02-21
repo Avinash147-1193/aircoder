@@ -8,7 +8,13 @@
 		"noEmit": true,
 		"erasableSyntaxOnly": true,
 		"verbatimModuleSyntax": true,
+		"esModuleInterop": true,
+		"allowSyntheticDefaultImports": true,
 		"allowImportingTsExtensions": true,
+		"types": [
+			"node",
+			"mocha"
+		],
 		"resolveJsonModule": true,
 		"skipLibCheck": true,
 		"strict": true,

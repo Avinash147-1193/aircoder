@@ -118,6 +118,10 @@ import { getOSReleaseInfo } from '../../../base/node/osReleaseInfo.js';
 import { getDesktopEnvironment } from '../../../base/common/desktopEnvironmentInfo.js';
 import { getCodeDisplayProtocol, getDisplayProtocol } from '../../../base/node/osDisplayProtocolInfo.js';
 import { RequestService } from '../../../platform/request/electron-utility/requestService.js';
+import { IForgeAiService, ForgeAiChannelName } from '../../../platform/forge/common/forgeAiService.js';
+import { IForgeAuthService, ForgeAuthChannelName } from '../../../platform/forge/common/forgeAuthService.js';
+import { ForgeAiService } from '../../../platform/forge/node/forgeAiService.js';
+import { ForgeAuthService } from '../../../platform/forge/node/forgeAuthService.js';
 import { DefaultExtensionsInitializer } from './contrib/defaultExtensionsInitializer.js';
 import { AllowedExtensionsService } from '../../../platform/extensionManagement/common/allowedExtensionsService.js';
 import { IExtensionGalleryManifestService } from '../../../platform/extensionManagement/common/extensionGalleryManifest.js';
@@ -404,6 +408,10 @@ class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 		// Web Content Extractor
 		services.set(ISharedWebContentExtractorService, new SyncDescriptor(SharedWebContentExtractorService));
 
+		// Forge AI
+		services.set(IForgeAiService, new SyncDescriptor(ForgeAiService));
+		services.set(IForgeAuthService, new SyncDescriptor(ForgeAuthService));
+
 		// Playwright
 		services.set(IBrowserViewGroupRemoteService, new SyncDescriptor(BrowserViewGroupRemoteService));
 		services.set(IPlaywrightService, new SyncDescriptor(PlaywrightService));
@@ -474,6 +482,12 @@ class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 		// Web Content Extractor
 		const webContentExtractorChannel = ProxyChannel.fromService(accessor.get(ISharedWebContentExtractorService), this._store);
 		this.server.registerChannel('sharedWebContentExtractor', webContentExtractorChannel);
+
+		// Forge AI
+		const forgeAiChannel = ProxyChannel.fromService(accessor.get(IForgeAiService), this._store);
+		this.server.registerChannel(ForgeAiChannelName, forgeAiChannel);
+		const forgeAuthChannel = ProxyChannel.fromService(accessor.get(IForgeAuthService), this._store);
+		this.server.registerChannel(ForgeAuthChannelName, forgeAuthChannel);
 
 		// Playwright
 		const playwrightChannel = ProxyChannel.fromService(accessor.get(IPlaywrightService), this._store);

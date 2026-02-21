@@ -23,6 +23,7 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../platfo
 import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { IDefaultAccountProvider, IDefaultAccountService } from '../../../../platform/defaultAccount/common/defaultAccount.js';
+import { IForgeAuthService } from '../../../../platform/forge/common/forgeAuthService.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { distinct } from '../../../../base/common/arrays.js';
 import { equals } from '../../../../base/common/objects.js';
@@ -253,6 +254,7 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 		@IStorageService private readonly storageService: IStorageService,
 		@IHostService private readonly hostService: IHostService,
 		@ICommandService private readonly commandService: ICommandService,
+		@IForgeAuthService private readonly forgeAuthService: IForgeAuthService,
 	) {
 		super();
 		this.accountStatusContext = CONTEXT_DEFAULT_ACCOUNT_STATE.bindTo(contextKeyService);
@@ -582,6 +584,9 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 	}
 
 	private async requestTokenEntitlements(sessions: AuthenticationSession[]): Promise<Partial<IPolicyData> | undefined> {
+		if (this.isForgeProvider()) {
+			return undefined;
+		}
 		const tokenEntitlementsUrl = this.getTokenEntitlementUrl();
 		if (!tokenEntitlementsUrl) {
 			this.logService.debug('[DefaultAccount] No token entitlements URL found');
@@ -620,6 +625,11 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 	}
 
 	private async getEntitlements(sessions: AuthenticationSession[]): Promise<IEntitlementsData | undefined | null> {
+		const localEntitlements = await this.getForgeEntitlements(sessions);
+		if (localEntitlements) {
+			return localEntitlements;
+		}
+
 		const entitlementUrl = this.getEntitlementUrl();
 		if (!entitlementUrl) {
 			this.logService.debug('[DefaultAccount] No chat entitlements URL found');
@@ -652,6 +662,27 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 		return undefined;
 	}
 
+	private async getForgeEntitlements(sessions: AuthenticationSession[]): Promise<IEntitlementsData | undefined> {
+		if (!this.isForgeProvider()) {
+			return undefined;
+		}
+		const accountId = sessions[0]?.account?.id;
+		if (!accountId) {
+			return undefined;
+		}
+		try {
+			return await this.forgeAuthService.getEntitlements(accountId);
+		} catch (error) {
+			this.logService.debug(`[DefaultAccount] Forge entitlements lookup failed: ${getErrorMessage(error)}`);
+			return undefined;
+		}
+	}
+
+	private isForgeProvider(): boolean {
+		const providerId = this.getDefaultAccountAuthenticationProvider().id;
+		return providerId === 'forge' || providerId.startsWith('forge-');
+	}
+
 	private async getMcpRegistryProvider(sessions: AuthenticationSession[], accountPolicyData: IAccountPolicyData | undefined): Promise<{ data: IMcpRegistryProvider | null; fetchedAt: number } | undefined> {
 		if (accountPolicyData?.mcpRegistryDataFetchedAt && !this.isDataStale(accountPolicyData.mcpRegistryDataFetchedAt)) {
 			this.logService.debug('[DefaultAccount] Using last fetched MCP registry data');
@@ -663,6 +694,9 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 	}
 
 	private async requestMcpRegistryProvider(sessions: AuthenticationSession[]): Promise<IMcpRegistryProvider | null | undefined> {
+		if (this.isForgeProvider()) {
+			return null;
+		}
 		const mcpRegistryDataUrl = this.getMcpRegistryDataUrl();
 		if (!mcpRegistryDataUrl) {
 			this.logService.debug('[DefaultAccount] No MCP registry data URL found');
@@ -835,7 +869,9 @@ class DefaultAccountProvider extends Disposable implements IDefaultAccountProvid
 		if (!this.defaultAccount) {
 			return;
 		}
-		this.commandService.executeCommand('_signOutOfAccount', { providerId: this.defaultAccount.authenticationProvider.id, accountLabel: this.defaultAccount.accountName });
+		await this.commandService.executeCommand('_signOutOfAccount', { providerId: this.defaultAccount.authenticationProvider.id, accountLabel: this.defaultAccount.accountName });
+		this.setDefaultAccount(null);
+		await this.updateDefaultAccount();
 	}
 
 }

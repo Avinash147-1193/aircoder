@@ -82,8 +82,11 @@ import '../platform/diagnostics/electron-browser/diagnosticsService.js';
 import '../platform/profiling/electron-browser/profilingService.js';
 import '../platform/telemetry/electron-browser/customEndpointTelemetryService.js';
 import '../platform/remoteTunnel/electron-browser/remoteTunnelService.js';
+import '../platform/forge/electron-browser/forgeAiService.js';
+import '../platform/forge/electron-browser/forgeAuthService.js';
 import './services/files/electron-browser/elevatedFileService.js';
 import './services/search/electron-browser/searchService.js';
+import './services/search/electron-browser/forgeAiSearchProvider.js';
 import './services/workingCopy/electron-browser/workingCopyHistoryService.js';
 import './services/userDataSync/browser/userDataSyncEnablementService.js';
 import './services/extensions/electron-browser/nativeExtensionService.js';
@@ -109,6 +112,9 @@ registerSingleton(IUserDataInitializationService, new SyncDescriptor(UserDataIni
 
 // Logs
 import './contrib/logs/electron-browser/logs.contribution.js';
+
+// Authentication
+import './contrib/authentication/electron-browser/forgeAuthentication.contribution.js';
 
 // Localizations
 import './contrib/localization/electron-browser/localization.contribution.js';

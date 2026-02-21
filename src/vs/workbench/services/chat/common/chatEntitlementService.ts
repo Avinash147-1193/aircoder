@@ -186,20 +186,20 @@ export function isProUser(chatEntitlement: ChatEntitlement): boolean {
 /**
  * Gets the full plan name for the given chat entitlement
  * @param chatEntitlement The chat entitlement to get the plan name for
- * @returns The localized full plan name (e.g., "Copilot Pro", "Copilot Free")
+ * @returns The localized full plan name (e.g., "Forge Pro", "Forge Free")
  */
 export function getChatPlanName(chatEntitlement: ChatEntitlement): string {
 	switch (chatEntitlement) {
 		case ChatEntitlement.Pro:
-			return localize('plan.proName', 'Copilot Pro');
+			return localize('plan.proName', 'Forge Pro');
 		case ChatEntitlement.ProPlus:
-			return localize('plan.proPlusName', 'Copilot Pro+');
+			return localize('plan.proPlusName', 'Forge Pro+');
 		case ChatEntitlement.Business:
-			return localize('plan.businessName', 'Copilot Business');
+			return localize('plan.businessName', 'Forge Business');
 		case ChatEntitlement.Enterprise:
-			return localize('plan.enterpriseName', 'Copilot Enterprise');
+			return localize('plan.enterpriseName', 'Forge Enterprise');
 		default:
-			return localize('plan.freeName', 'Copilot Free');
+			return localize('plan.freeName', 'Forge Free');
 	}
 }
 
@@ -914,7 +914,7 @@ export class ChatEntitlementRequests extends Disposable {
 		if (!this.lifecycleService.willShutdown) {
 			const { confirmed } = await this.dialogService.confirm({
 				type: Severity.Error,
-				message: localize('unknownSignUpError', "An error occurred while signing up for the GitHub Copilot Free plan. Would you like to try again?"),
+				message: localize('unknownSignUpError', "An error occurred while signing up for the Forge Free plan. Would you like to try again?"),
 				detail,
 				primaryButton: localize('retry', "Retry")
 			});
@@ -931,7 +931,7 @@ export class ChatEntitlementRequests extends Disposable {
 		if (!this.lifecycleService.willShutdown) {
 			this.dialogService.prompt({
 				type: Severity.Error,
-				message: localize('unprocessableSignUpError', "An error occurred while signing up for the GitHub Copilot Free plan."),
+				message: localize('unprocessableSignUpError', "An error occurred while signing up for the Forge Free plan."),
 				detail: logDetails,
 				buttons: [
 					{
@@ -950,7 +950,7 @@ export class ChatEntitlementRequests extends Disposable {
 	async signIn(options?: { useSocialProvider?: string; additionalScopes?: readonly string[] }): Promise<{ defaultAccount?: IDefaultAccount; entitlements?: IEntitlements }> {
 		const defaultAccount = await this.defaultAccountService.signIn({
 			additionalScopes: options?.additionalScopes,
-			extraAuthorizeParameters: { get_started_with: 'copilot-vscode' },
+			extraAuthorizeParameters: { get_started_with: 'forge-vscode' },
 			provider: options?.useSocialProvider
 		});
 		if (!defaultAccount) {

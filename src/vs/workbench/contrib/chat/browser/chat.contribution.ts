@@ -116,6 +116,7 @@ import { ChatLanguageModelsDataContribution, LanguageModelsConfigurationService 
 import './chatManagement/chatManagement.contribution.js';
 import './aiCustomization/aiCustomizationWorkspaceService.js';
 import './aiCustomization/aiCustomizationManagement.contribution.js';
+import './forge/forge.contribution.js';
 
 import { ChatOutputRendererService, IChatOutputRendererService } from './chatOutputItemRenderer.js';
 import { ChatCompatibilityNotifier, ChatExtensionPointHandler } from './chatParticipant.contribution.js';
@@ -703,7 +704,7 @@ configurationRegistry.registerConfiguration({
 		[ChatConfiguration.EditModeHidden]: {
 			type: 'boolean',
 			description: nls.localize('chat.editMode.hidden', "When enabled, hides the Edit mode from the chat mode picker."),
-			default: true,
+			default: false,
 			tags: ['experimental'],
 			experiment: {
 				mode: 'auto'
@@ -1174,7 +1175,7 @@ configurationRegistry.registerConfiguration({
 		},
 		[ChatConfiguration.AIDisabled]: {
 			type: 'boolean',
-			description: nls.localize('chat.disableAIFeatures', "Disable and hide built-in AI features provided by GitHub Copilot, including chat and inline suggestions."),
+			description: nls.localize('chat.disableAIFeatures', "Disable and hide built-in AI features provided by Forge, including chat and inline suggestions."),
 			default: false,
 			scope: ConfigurationScope.WINDOW
 		},
@@ -1189,7 +1190,7 @@ configurationRegistry.registerConfiguration({
 		},
 		[ChatConfiguration.GrowthNotificationEnabled]: {
 			type: 'boolean',
-			description: nls.localize('chat.growthNotification', "Controls whether to show a growth notification in the agent sessions view to encourage new users to try Copilot."),
+			description: nls.localize('chat.growthNotification', "Controls whether to show a growth notification in the agent sessions view to encourage new users to try Forge."),
 			default: false,
 			tags: ['experimental'],
 			experiment: {
@@ -1209,7 +1210,7 @@ configurationRegistry.registerConfiguration({
 		},
 		'chat.extensionUnification.enabled': {
 			type: 'boolean',
-			description: nls.localize('chat.extensionUnification.enabled', "Enables the unification of GitHub Copilot extensions. When enabled, all GitHub Copilot functionality is served from the GitHub Copilot Chat extension. When disabled, the GitHub Copilot and GitHub Copilot Chat extensions operate independently."),
+			description: nls.localize('chat.extensionUnification.enabled', "Enables the unification of Forge extensions. When enabled, all Forge functionality is served from the Forge Chat extension. When disabled, the Forge and Forge Chat extensions operate independently."),
 			default: true,
 			tags: ['experimental'],
 			experiment: {

@@ -262,6 +262,9 @@ export class ChatSetupController extends Disposable {
 	}
 
 	private async doInstall(): Promise<void> {
+		if (this.isForgeCoreChat() || !defaultChat.chatExtensionId) {
+			return;
+		}
 		await this.extensionsWorkbenchService.install(defaultChat.chatExtensionId, {
 			enable: true,
 			isApplicationScoped: true, 	// install into all profiles
@@ -269,6 +272,10 @@ export class ChatSetupController extends Disposable {
 			installEverywhere: true,	// install in local and remote
 			installPreReleaseVersion: this.productService.quality !== 'stable'
 		}, ChatViewId);
+	}
+
+	private isForgeCoreChat(): boolean {
+		return defaultChat.chatExtensionId.startsWith('forge.');
 	}
 
 	async setupWithProvider(options: IChatSetupControllerOptions): Promise<ChatSetupResultValue> {

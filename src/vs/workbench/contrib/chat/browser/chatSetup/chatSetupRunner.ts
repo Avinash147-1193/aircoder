@@ -43,6 +43,10 @@ const defaultChat = {
 	privacyStatementUrl: product.defaultChatAgent?.privacyStatementUrl ?? ''
 };
 
+const isForgeCoreChat = () =>
+	(product.defaultChatAgent?.extensionId ?? '').startsWith('forge.')
+	|| (product.defaultChatAgent?.chatExtensionId ?? '').startsWith('forge.');
+
 export class ChatSetup {
 
 	private static instance: ChatSetup | undefined = undefined;
@@ -175,7 +179,7 @@ export class ChatSetup {
 				type: 'none',
 				extraClasses: ['chat-setup-dialog'],
 				detail: ' ', // workaround allowing us to render the message in large
-				icon: Codicon.copilotLarge,
+				icon: Codicon.chatSparkle,
 				alignment: DialogContentsAlignment.Vertical,
 				cancelId: useCloseButton ? buttons.length : buttons.length - 1,
 				disableCloseButton: !useCloseButton,
@@ -202,8 +206,12 @@ export class ChatSetup {
 			const enterpriseProviderButton: ContinueWithButton = [localize('continueWith', "Continue with {0}", defaultChat.provider.enterprise.name), ChatSetupStrategy.SetupWithEnterpriseProvider, styleButton('continue-button', 'default')];
 			const enterpriseProviderLink: ContinueWithButton = [enterpriseProviderButton[0], enterpriseProviderButton[1], styleButton('link-button')];
 
-			const googleProviderButton: ContinueWithButton = [localize('continueWith', "Continue with {0}", defaultChat.provider.google.name), ChatSetupStrategy.SetupWithGoogleProvider, styleButton('continue-button', 'google')];
-			const appleProviderButton: ContinueWithButton = [localize('continueWith', "Continue with {0}", defaultChat.provider.apple.name), ChatSetupStrategy.SetupWithAppleProvider, styleButton('continue-button', 'apple')];
+			const googleProviderButton: ContinueWithButton | undefined = !isForgeCoreChat() && defaultChat.provider.google.name
+				? [localize('continueWith', "Continue with {0}", defaultChat.provider.google.name), ChatSetupStrategy.SetupWithGoogleProvider, styleButton('continue-button', 'google')]
+				: undefined;
+			const appleProviderButton: ContinueWithButton | undefined = !isForgeCoreChat() && defaultChat.provider.apple.name
+				? [localize('continueWith', "Continue with {0}", defaultChat.provider.apple.name), ChatSetupStrategy.SetupWithAppleProvider, styleButton('continue-button', 'apple')]
+				: undefined;
 
 			if (!this.defaultAccountService.getDefaultAccountAuthenticationProvider().enterprise) {
 				buttons = coalesce([
@@ -255,7 +263,7 @@ export class ChatSetup {
 		if (options?.forceAnonymous || this.telemetryService.telemetryLevel === TelemetryLevel.NONE) {
 			footer = localize({ key: 'settingsAnonymous', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}).", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl);
 		} else {
-			footer = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}', '{Locked="]({4})"}', '{Locked="]({5})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}). {3} Copilot may show [public code]({4}) suggestions and use your data to improve the product. You can change these [settings]({5}) anytime.", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl, defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
+			footer = localize({ key: 'settings', comment: ['{Locked="["}', '{Locked="]({1})"}', '{Locked="]({2})"}', '{Locked="]({4})"}', '{Locked="]({5})"}'] }, "By continuing, you agree to {0}'s [Terms]({1}) and [Privacy Statement]({2}). {3} may show [public code]({4}) suggestions and use your data to improve the product. You can change these [settings]({5}) anytime.", defaultChat.provider.default.name, defaultChat.termsStatementUrl, defaultChat.privacyStatementUrl, defaultChat.provider.default.name, defaultChat.publicCodeMatchesUrl, defaultChat.manageSettingsUrl);
 		}
 		element.appendChild($('p', undefined, disposables.add(this.markdownRendererService.render(new MarkdownString(footer, { isTrusted: true }))).element));
 

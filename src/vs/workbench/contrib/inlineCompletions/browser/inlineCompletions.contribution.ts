@@ -13,6 +13,7 @@ import { wrapInHotClass1 } from '../../../../platform/observable/common/wrapInHo
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { InlineCompletionLanguageStatusBarContribution } from './inlineCompletionLanguageStatusBarContribution.js';
+import './forgeInlineCompletions.contribution.js';
 
 registerWorkbenchContribution2(InlineCompletionLanguageStatusBarContribution.Id, wrapInHotClass1(InlineCompletionLanguageStatusBarContribution.hot), WorkbenchPhase.Eventually);
 

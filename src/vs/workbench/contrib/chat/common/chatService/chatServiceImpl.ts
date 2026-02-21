@@ -756,7 +756,11 @@ export class ChatService extends Disposable implements IChatService {
 			locationData: request.locationData,
 			attachedContext: request.attachedContext,
 		};
-		await this._sendRequestAsync(model, model.sessionResource, request.message, attempt, enableCommandDetection, defaultAgent, location, resendOptions).responseCompletePromise;
+		const shouldReparseRequest = Boolean(resendOptions.agentId || resendOptions.agentIdSilent || resendOptions.slashCommand || resendOptions.parserContext);
+		const parsedRequest = shouldReparseRequest
+			? this.parseChatRequest(model.sessionResource, request.message.text, location, resendOptions)
+			: request.message;
+		await this._sendRequestAsync(model, model.sessionResource, parsedRequest, attempt, enableCommandDetection, defaultAgent, location, resendOptions).responseCompletePromise;
 	}
 
 	private queuePendingRequest(model: ChatModel, sessionResource: URI, request: string, options: IChatSendRequestOptions): ChatSendResultQueued {

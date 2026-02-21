@@ -10,6 +10,7 @@ import { Codicon } from '../../../../../base/common/codicons.js';
 import { toErrorMessage } from '../../../../../base/common/errorMessage.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
 import { MarkdownString } from '../../../../../base/common/htmlContent.js';
+import { Iterable } from '../../../../../base/common/iterator.js';
 import { Lazy } from '../../../../../base/common/lazy.js';
 import { Disposable, DisposableStore, IDisposable, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../base/common/uri.js';
@@ -28,7 +29,7 @@ import { ChatEntitlement, ChatEntitlementContext, IChatEntitlementService } from
 import { ChatModel, ChatRequestModel, IChatRequestModel, IChatRequestVariableData } from '../../common/model/chatModel.js';
 import { ChatMode } from '../../common/chatModes.js';
 import { ChatRequestAgentPart, ChatRequestToolPart } from '../../common/requestParser/chatParserTypes.js';
-import { IChatProgress, IChatService } from '../../common/chatService/chatService.js';
+import { IChatProgress, IChatSendRequestOptions, IChatService } from '../../common/chatService/chatService.js';
 import { IChatRequestToolEntry } from '../../common/attachments/chatVariableEntries.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../common/constants.js';
 import { ILanguageModelsService } from '../../common/languageModels.js';
@@ -63,6 +64,8 @@ const defaultChat = {
 	outputChannelId: product.defaultChatAgent?.chatExtensionOutputId ?? '',
 	outputExtensionStateCommand: product.defaultChatAgent?.chatExtensionOutputExtensionStateCommand ?? '',
 };
+
+const isForgeCoreChat = () => defaultChat.extensionId.startsWith('forge.') || defaultChat.chatExtensionId.startsWith('forge.');
 
 const ToolsAgentContextKey = ContextKeyExpr.and(
 	ContextKeyExpr.equals(`config.${ChatConfiguration.AgentEnabled}`, true),
@@ -106,7 +109,7 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 					break;
 			}
 
-			return SetupAgent.doRegisterAgent(instantiationService, chatAgentService, id, `${defaultChat.provider.default.name} Copilot` /* Do NOT change, this hides the username altogether in Chat */, true, description, location, mode, context, controller);
+			return SetupAgent.doRegisterAgent(instantiationService, chatAgentService, id, `${defaultChat.provider.default.name} Assistant`, true, description, location, mode, context, controller);
 		});
 	}
 
@@ -174,7 +177,7 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 		return { agent, disposable: disposables };
 	}
 
-	private static readonly SETUP_NEEDED_MESSAGE = new MarkdownString(localize('settingUpCopilotNeeded', "You need to set up GitHub Copilot and be signed in to use Chat."));
+	private static readonly SETUP_NEEDED_MESSAGE = new MarkdownString(localize('settingUpForgeNeeded', "You need to set up Forge and be signed in to use Chat."));
 	private static readonly TRUST_NEEDED_MESSAGE = new MarkdownString(localize('trustNeeded', "You need to trust this workspace to use Chat."));
 
 	private static readonly CHAT_RETRY_COMMAND_ID = 'workbench.action.chat.retrySetup';
@@ -303,17 +306,22 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 	}
 
 	private async doForwardRequestToChat(requestModel: IChatRequestModel, progress: (part: IChatProgress) => void, chatService: IChatService, languageModelsService: ILanguageModelsService, chatAgentService: IChatAgentService, chatWidgetService: IChatWidgetService, languageModelToolsService: ILanguageModelToolsService): Promise<void> {
-		if (this.pendingForwardedRequests.has(requestModel.session.sessionResource)) {
-			throw new Error('Request already in progress');
+		const sessionResource = requestModel.session.sessionResource;
+		const existingForwardRequest = this.pendingForwardedRequests.get(sessionResource);
+		if (existingForwardRequest) {
+			await existingForwardRequest;
+			return;
 		}
 
 		const forwardRequest = this.doForwardRequestToChatWhenReady(requestModel, progress, chatService, languageModelsService, chatAgentService, chatWidgetService, languageModelToolsService);
-		this.pendingForwardedRequests.set(requestModel.session.sessionResource, forwardRequest);
+		this.pendingForwardedRequests.set(sessionResource, forwardRequest);
 
 		try {
 			await forwardRequest;
 		} finally {
-			this.pendingForwardedRequests.delete(requestModel.session.sessionResource);
+			if (this.pendingForwardedRequests.get(sessionResource) === forwardRequest) {
+				this.pendingForwardedRequests.delete(sessionResource);
+			}
 		}
 	}
 
@@ -392,7 +400,9 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 
 				if (ready === 'timedout') {
 					let warningMessage: string;
-					if (this.chatEntitlementService.anonymous) {
+					if (isForgeCoreChat()) {
+						warningMessage = localize('chatTookLongWarningForge', "Chat took too long to get ready. Please restart and try again if this issue persists.");
+					} else if (this.chatEntitlementService.anonymous) {
 						warningMessage = localize('chatTookLongWarningAnonymous', "Chat took too long to get ready. Please ensure that the extension `{0}` is installed and enabled. Click restart to try again if this issue persists.", defaultChat.chatExtensionId);
 					} else {
 						warningMessage = localize('chatTookLongWarning', "Chat took too long to get ready. Please ensure you are signed in to {0} and that the extension `{1}` is installed and enabled. Click restart to try again if this issue persists.", defaultChat.provider.default.name, defaultChat.chatExtensionId);
@@ -507,7 +517,7 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 							kind: 'command',
 							command: {
 								id: SetupAgent.CHAT_SHOW_OUTPUT_COMMAND_ID,
-								title: localize('showCopilotChatDetails', "Show Details")
+								title: localize('showForgeChatDetails', "Show Details")
 							}
 						});
 					} else {
@@ -531,11 +541,17 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 			}
 		}
 
-		await chatService.resendRequest(requestModel, {
+		const resendOptions: IChatSendRequestOptions = {
 			...widget?.getModeRequestOptions(),
 			modeInfo,
 			userSelectedModelId: widget?.input.currentLanguageModel
-		});
+		};
+		const forwardAgentId = this.resolveForwardAgentId(chatAgentService, modeInfo?.kind);
+		if (forwardAgentId) {
+			resendOptions.agentId = forwardAgentId;
+		}
+
+		await chatService.resendRequest(requestModel, resendOptions);
 	}
 
 	private async whenPanelAgentHasGuidance(disposables: DisposableStore): Promise<void> {
@@ -602,33 +618,28 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 			return; // No tools in this request, no need to check
 		}
 
-		// check that tools other than setup. and internal tools are registered.
-		for (const tool of languageModelToolsService.getAllToolsIncludingDisabled()) {
-			if (tool.id.startsWith('copilot_')) {
-				return; // we have tools!
-			}
+		const hasTools = () => Iterable.some(
+			languageModelToolsService.getAllToolsIncludingDisabled(),
+			tool => tool.id.startsWith('copilot_') || tool.id.startsWith('forge_')
+		);
+		if (hasTools()) {
+			return; // we have tools!
 		}
 
 		return Event.toPromise(Event.filter(languageModelToolsService.onDidChangeTools, () => {
-			for (const tool of languageModelToolsService.getAllToolsIncludingDisabled()) {
-				if (tool.id.startsWith('copilot_')) {
-					return true; // we have tools!
-				}
-			}
-
-			return false; // no external tools found
+			return hasTools();
 		}));
 	}
 
 	private whenAgentReady(chatAgentService: IChatAgentService, mode: ChatModeKind | undefined): Promise<unknown> | void {
 		const defaultAgent = chatAgentService.getDefaultAgent(this.location, mode);
-		if (defaultAgent && !defaultAgent.isCore) {
+		if (defaultAgent && (!defaultAgent.isCore || isForgeCoreChat())) {
 			return; // we have a default agent from an extension!
 		}
 
 		return Event.toPromise(Event.filter(chatAgentService.onDidChangeAgents, () => {
 			const defaultAgent = chatAgentService.getDefaultAgent(this.location, mode);
-			return Boolean(defaultAgent && !defaultAgent.isCore);
+			return Boolean(defaultAgent && (!defaultAgent.isCore || isForgeCoreChat()));
 		}));
 	}
 
@@ -714,12 +725,13 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 		}
 
 		const agentId = agentPart.agent.id.replace(/setup\./, `${defaultChat.extensionId}.`.toLowerCase());
-		const githubAgent = chatAgentService.getAgent(agentId);
-		if (!githubAgent) {
+		const resolvedAgent = chatAgentService.getAgent(agentId)
+			?? chatAgentService.getDefaultAgent(this.location, requestModel.modeInfo?.kind);
+		if (!resolvedAgent) {
 			return requestModel;
 		}
 
-		const newAgentPart = new ChatRequestAgentPart(agentPart.range, agentPart.editorRange, githubAgent);
+		const newAgentPart = new ChatRequestAgentPart(agentPart.range, agentPart.editorRange, resolvedAgent);
 
 		return new ChatRequestModel({
 			session: requestModel.session as ChatModel,
@@ -749,7 +761,8 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 			return requestModel;
 		}
 
-		const toolId = toolPart.toolId.replace(/setup.tools\./, `copilot_`.toLowerCase());
+		const toolPrefix = isForgeCoreChat() ? 'forge_' : 'copilot_';
+		const toolId = toolPart.toolId.replace(/setup.tools\./, toolPrefix.toLowerCase());
 		const newToolPart = new ChatRequestToolPart(
 			toolPart.range,
 			toolPart.editorRange,
@@ -791,6 +804,26 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 			attachedContext: [chatRequestToolEntry],
 			isCompleteAddedRequest: requestModel.isCompleteAddedRequest,
 		});
+	}
+
+	private resolveForwardAgentId(chatAgentService: IChatAgentService, mode: ChatModeKind | undefined): string | undefined {
+		const resolvedMode = mode ?? ChatModeKind.Ask;
+		const defaultAgent = chatAgentService.getDefaultAgent(this.location, resolvedMode);
+		if (defaultAgent && !defaultAgent.id.startsWith('setup.')) {
+			return defaultAgent.id;
+		}
+
+		let fallback: string | undefined;
+		for (const agent of chatAgentService.getActivatedAgents()) {
+			if (!agent.isDefault || !agent.locations.includes(this.location) || !agent.modes.includes(resolvedMode)) {
+				continue;
+			}
+			if (!agent.id.startsWith('setup.')) {
+				fallback = agent.id;
+			}
+		}
+
+		return fallback;
 	}
 }
 

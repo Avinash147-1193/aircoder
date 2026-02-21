@@ -32,6 +32,7 @@ import { clamp } from '../../../../../base/common/numbers.js';
 import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { localize } from '../../../../../nls.js';
+import product from '../../../../../platform/product/common/product.js';
 import { IMenuEntryActionViewItemOptions, MenuEntryActionViewItem, createActionViewItem } from '../../../../../platform/actions/browser/menuEntryActionViewItem.js';
 import { MenuWorkbenchToolBar } from '../../../../../platform/actions/browser/toolbar.js';
 import { MenuId, MenuItemAction } from '../../../../../platform/actions/common/actions.js';
@@ -112,7 +113,7 @@ import { ChatQuestionCarouselAutoReply } from './chatQuestionCarouselAutoReply.j
 
 const $ = dom.$;
 
-const COPILOT_USERNAME = 'GitHub Copilot';
+const DEFAULT_ASSISTANT_USERNAME = `${product.defaultChatAgent?.provider?.default?.name ?? 'Forge'} Assistant`;
 
 export interface IChatListItemTemplate {
 	currentElement?: ChatTreeItem;
@@ -732,8 +733,8 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 		}
 
 		templateData.username.textContent = element.username;
-		templateData.username.classList.toggle('hidden', element.username === COPILOT_USERNAME);
-		templateData.avatarContainer.classList.toggle('hidden', element.username === COPILOT_USERNAME);
+		templateData.username.classList.toggle('hidden', element.username === DEFAULT_ASSISTANT_USERNAME);
+		templateData.avatarContainer.classList.toggle('hidden', element.username === DEFAULT_ASSISTANT_USERNAME);
 
 		this.hoverHidden(templateData.requestHover);
 		dom.clearNode(templateData.detail);

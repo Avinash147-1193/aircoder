@@ -48,6 +48,16 @@ registerAction2(class extends Action2 {
 	}
 });
 
+MenuRegistry.appendMenuItem(MenuId.AccountsContext, {
+	command: {
+		id: 'workbench.action.agenticSignIn',
+		title: localize('signIn', "Sign In"),
+	},
+	when: ContextKeyExpr.notEquals('defaultAccountStatus', 'available'),
+	group: '1_account',
+	order: 1,
+});
+
 // Sign Out (shown when signed in)
 registerAction2(class extends Action2 {
 	constructor() {

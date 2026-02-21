@@ -181,7 +181,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 
 		const updateGrowthSession = () => {
 			const experimentEnabled = this.configurationService.getValue<boolean>(ChatConfiguration.GrowthNotificationEnabled) === true;
-			// Show for users who don't have the Copilot extension installed yet.
+			// Show for users who don't have the Forge extension installed yet.
 			// Additional conditions (e.g., anonymous, entitlement) can be layered here.
 			const shouldShow = experimentEnabled && !chatEntitlementService.sentiment.installed;
 			if (shouldShow && !growthSessionDisposables.value) {
@@ -213,7 +213,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 
 		class ChatSetupTriggerAction extends Action2 {
 
-			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Use AI Features with Copilot for free...");
+			static CHAT_SETUP_ACTION_LABEL = localize2('triggerChatSetup', "Use Forge AI features for free...");
 
 			constructor() {
 				super({
@@ -363,7 +363,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			constructor() {
 				super({
 					id: 'workbench.action.chat.upgradePlan',
-					title: localize2('managePlan', "Upgrade to GitHub Copilot Pro"),
+					title: localize2('managePlan', "Upgrade to Forge Pro"),
 					category: localize2('chat.category', 'Chat'),
 					f1: true,
 					precondition: ContextKeyExpr.and(
@@ -419,7 +419,7 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 			constructor() {
 				super({
 					id: 'workbench.action.chat.manageOverages',
-					title: localize2('manageOverages', "Manage GitHub Copilot Overages"),
+					title: localize2('manageOverages', "Manage Forge overages"),
 					category: localize2('chat.category', 'Chat'),
 					f1: true,
 					precondition: ContextKeyExpr.and(
@@ -579,7 +579,16 @@ export class ChatSetupContribution extends Disposable implements IWorkbenchContr
 		this._register(ExtensionUrlHandlerOverrideRegistry.registerHandler(this.instantiationService.createInstance(ChatSetupExtensionUrlHandler)));
 	}
 
+	private isForgeCoreChat(): boolean {
+		const extensionId = product.defaultChatAgent?.extensionId ?? '';
+		return extensionId.startsWith('forge.') || defaultChat.chatExtensionId.startsWith('forge.');
+	}
+
 	private async checkExtensionInstallation(context: ChatEntitlementContext): Promise<void> {
+		if (this.isForgeCoreChat()) {
+			context.update({ installed: true, disabled: false, untrusted: false });
+			return;
+		}
 
 		// When developing extensions, await registration and then check
 		if (this.environmentService.isExtensionDevelopment) {
