@@ -15,7 +15,7 @@ import { INativeEnvironmentService } from '../../environment/common/environment.
 import { IFileService } from '../../files/common/files.js';
 import { ILogService } from '../../log/common/log.js';
 import { IRequestService, asJson, isSuccess } from '../../request/common/request.js';
-import { ForgeChatRequest, ForgeChatResponse, ForgeCompletionRequest, ForgeCompletionResponse, ForgeEmbeddingRequest, ForgeEmbeddingResponse, ForgeIndexRequest, ForgeIndexStatus, ForgePolicyCheckRequest, ForgePolicyDecision, ForgeRunCommandRequest, ForgeRunCommandResponse, ForgeSearchRequest, ForgeSearchResponse, IForgeAiService } from '../common/forgeAiService.js';
+import { ForgeChatRequest, ForgeChatResponse, ForgeCompletionRequest, ForgeCompletionResponse, ForgeEmbeddingRequest, ForgeEmbeddingResponse, ForgeIndexRequest, ForgeIndexStatus, ForgeMemoryQueryRequest, ForgeMemoryQueryResponse, ForgeMemoryWriteRequest, ForgeMemoryWriteResponse, ForgePolicyCheckRequest, ForgePolicyDecision, ForgeRunCommandRequest, ForgeRunCommandResponse, ForgeSearchRequest, ForgeSearchResponse, IForgeAiService } from '../common/forgeAiService.js';
 import { ForgeConfiguration } from '../common/forgeConfiguration.js';
 
 interface ForgeApiError {
@@ -146,6 +146,14 @@ export class ForgeAiService implements IForgeAiService {
 			}));
 
 		return { results };
+	}
+
+	async memoryQuery(request: ForgeMemoryQueryRequest, token: CancellationToken): Promise<ForgeMemoryQueryResponse> {
+		return this.postJson<ForgeMemoryQueryResponse>('/v1/memory/query', request, token);
+	}
+
+	async memoryWrite(request: ForgeMemoryWriteRequest, token: CancellationToken): Promise<ForgeMemoryWriteResponse> {
+		return this.postJson<ForgeMemoryWriteResponse>('/v1/memory/write', request, token);
 	}
 
 	async runCommand(request: ForgeRunCommandRequest, token: CancellationToken): Promise<ForgeRunCommandResponse> {

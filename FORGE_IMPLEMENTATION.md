@@ -125,6 +125,56 @@ Settings are registered in `src/vs/platform/forge/common/forgeConfiguration.ts`:
 - `forge.api.authToken`
 - `forge.tools.commandAllowlist`
 - `forge.tools.commandDenylist`
+- `forge.agent.*` (agent orchestration, tools, retrieval, memory)
+
+## Agent architecture (hybrid)
+The system is designed to scale across a hybrid boundary: local tooling and shared-process services on the client, with model and memory services in a backend.
+
+```mermaid
+flowchart LR
+  subgraph client[ClientWorkbench]
+    ChatUI[ChatUI]
+    ChatService[ChatServiceImpl]
+    AgentSvc[ChatAgentService]
+    ToolSvc[LanguageModelToolsService]
+  end
+  subgraph runtime[AgentRuntimeLocal]
+    Orchestrator[ForgeOrchestrator]
+    Planner[PlannerLM]
+    Worker[WorkerLM]
+    ToolRouter[ToolRouter]
+  end
+  subgraph sharedProc[SharedProcess]
+    ForgeAi[ForgeAiService]
+    Indexer[IndexingAndSearch]
+  end
+  subgraph backend[ForgeBackend]
+    ModelGateway[ModelGateway]
+    Retrieval[RetrievalAPI]
+    MemorySvc[MemoryService]
+    PolicySvc[PolicyAndEvals]
+  end
+
+  ChatUI --> ChatService --> AgentSvc --> Orchestrator
+  Orchestrator --> ToolSvc
+  Orchestrator --> ForgeAi
+  ForgeAi --> ModelGateway
+  ForgeAi --> Retrieval
+  Orchestrator --> MemorySvc
+  ToolRouter --> ToolSvc
+  ForgeAi --> Indexer
+  PolicySvc --> ModelGateway
+```
+
+## Orchestrator, retrieval, and memory
+- `ForgeOrchestrator` (`src/vs/workbench/contrib/chat/browser/forge/forgeOrchestrator.ts`) owns the per-request flow.
+- It runs an optional planning step, invokes tools via `ILanguageModelToolsService`, and merges tool outputs into the final model call.
+- Retrieval uses `IForgeAiService.indexWorkspace` + `semanticSearch` to add top-k context snippets.
+- Memory uses `IForgeAiService.memoryQuery` / `memoryWrite` with a local storage fallback when the backend is unavailable.
+
+**Backend endpoints**
+- `POST /v1/memory/query` → `{ items: ForgeMemoryItem[] }`
+- `POST /v1/memory/write` → `{ ok: boolean, itemsWritten: number }`
 
 ## Agent lifecycle: how agents are created
 The Forge agent is a core workbench contribution, not an external extension.

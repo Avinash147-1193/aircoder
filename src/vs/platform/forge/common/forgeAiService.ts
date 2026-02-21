@@ -105,6 +105,34 @@ export interface ForgeSearchResponse {
 	results: ForgeSearchResult[];
 }
 
+export interface ForgeMemoryItem {
+	id: string;
+	content: string;
+	tags?: string[];
+	createdAt?: number;
+	lastAccessedAt?: number;
+}
+
+export interface ForgeMemoryQueryRequest {
+	workspaceId: string;
+	query: string;
+	maxResults?: number;
+}
+
+export interface ForgeMemoryQueryResponse {
+	items: ForgeMemoryItem[];
+}
+
+export interface ForgeMemoryWriteRequest {
+	workspaceId: string;
+	items: ForgeMemoryItem[];
+}
+
+export interface ForgeMemoryWriteResponse {
+	ok: boolean;
+	itemsWritten: number;
+}
+
 export interface ForgeRunCommandRequest {
 	command: string;
 	cwd?: string;
@@ -128,6 +156,8 @@ export interface IForgeAiService {
 	indexWorkspace(request: ForgeIndexRequest, token: CancellationToken): Promise<ForgeIndexStatus>;
 	semanticSearch(request: ForgeSearchRequest, token: CancellationToken): Promise<ForgeSearchResponse>;
 	runCommand(request: ForgeRunCommandRequest, token: CancellationToken): Promise<ForgeRunCommandResponse>;
+	memoryQuery(request: ForgeMemoryQueryRequest, token: CancellationToken): Promise<ForgeMemoryQueryResponse>;
+	memoryWrite(request: ForgeMemoryWriteRequest, token: CancellationToken): Promise<ForgeMemoryWriteResponse>;
 }
 
 export class NullForgeAiService implements IForgeAiService {
@@ -163,5 +193,13 @@ export class NullForgeAiService implements IForgeAiService {
 
 	async runCommand(_request: ForgeRunCommandRequest, _token: CancellationToken): Promise<ForgeRunCommandResponse> {
 		return { exitCode: null, stdout: '', stderr: 'Forge AI service not available', timedOut: false };
+	}
+
+	async memoryQuery(_request: ForgeMemoryQueryRequest, _token: CancellationToken): Promise<ForgeMemoryQueryResponse> {
+		return { items: [] };
+	}
+
+	async memoryWrite(_request: ForgeMemoryWriteRequest, _token: CancellationToken): Promise<ForgeMemoryWriteResponse> {
+		return { ok: false, itemsWritten: 0 };
 	}
 }

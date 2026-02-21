@@ -8,25 +8,34 @@ import { MarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { ExtensionIdentifier } from '../../../../../platform/extensions/common/extensions.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
+import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IChatProgress } from '../../common/chatService/chatService.js';
 import { ChatMessageRole, getTextResponseFromStream, IChatMessage, ILanguageModelsService } from '../../common/languageModels.js';
 import { IChatAgentHistoryEntry, IChatAgentImplementation, IChatAgentRequest, IChatAgentResult } from '../../common/participants/chatAgents.js';
 import { FORGE_DEFAULT_MODEL_ID } from './forgeLanguageModelProvider.js';
+import { ForgeOrchestrator } from './forgeOrchestrator.js';
 
 export class ForgeAgent extends Disposable implements IChatAgentImplementation {
 	private static readonly AgentExtensionId = new ExtensionIdentifier('forge.ai');
 
 	constructor(
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
+		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@ILogService private readonly logService: ILogService,
 	) {
 		super();
 	}
 
-	async invoke(request: IChatAgentRequest, progress: (parts: IChatProgress[]) => void, _history: IChatAgentHistoryEntry[], token: CancellationToken): Promise<IChatAgentResult> {
+	async invoke(request: IChatAgentRequest, progress: (parts: IChatProgress[]) => void, history: IChatAgentHistoryEntry[], token: CancellationToken): Promise<IChatAgentResult> {
 		const modelId = await this.resolveModelId(request);
-		const messages = this.buildMessages(request);
+		try {
+			const orchestrator = this.instantiationService.createInstance(ForgeOrchestrator);
+			return await orchestrator.run(request, progress, history, modelId, token);
+		} catch (error) {
+			this.logService.error('[ForgeAgent] Orchestrator failed, falling back to simple response', error);
+		}
 
+		const messages = this.buildMessages(request);
 		const response = await this.languageModelsService.sendChatRequest(
 			modelId,
 			ForgeAgent.AgentExtensionId,
